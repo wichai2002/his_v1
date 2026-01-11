@@ -1,14 +1,50 @@
 # Hospital Information System (HIS) API
 
-A RESTful API built with Go, Gin, GORM, and PostgreSQL following Clean Architecture principles.
+A multi-tenant RESTful API built with Go, Gin, GORM, and PostgreSQL following Clean Architecture principles. Each hospital (tenant) has complete data isolation through PostgreSQL schemas.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              NGINX                                       │
+│                    (Rate Limiting, SSL, Load Balancing)                 │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Go API Server                                  │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │
+│  │  Tenant         │  │  Auth           │  │  Handlers       │         │
+│  │  Middleware     │──│  Middleware     │──│  (Staff/Patient)│         │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘         │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PostgreSQL Database                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                  │
+│  │public schema │  │tenant_hosp01 │  │tenant_hosp02 │  ...             │
+│  │  - tenants   │  │  - staffs    │  │  - staffs    │                  │
+│  │  - migrations│  │  - patients  │  │  - patients  │                  │
+│  └──────────────┘  └──────────────┘  └──────────────┘                  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Features
 
-- **Clean Architecture**: Separation of concerns with Domain, Repository, Usecase, and Delivery layers
-- **JWT Authentication**: Secure authentication with role-based access control
+- **Multi-Tenant Architecture**: Schema-based tenant isolation for complete data separation
+- **Subdomain Routing**: Access tenant data via `{subdomain}.yourdomain.com`
+- **Clean Architecture**: Separation of concerns with Domain, Repository, Service, and Delivery layers
+- **JWT Authentication**: Secure authentication with role-based access control (Admin/Staff)
 - **PostgreSQL Database**: Robust data persistence with GORM ORM
 - **Version-controlled Migrations**: GORM-based migration system with version tracking
-- **RESTful API**: Well-structured API endpoints
+- **Docker Ready**: Production-ready Docker and Docker Compose configuration
+- **Rate Limiting**: NGINX-based rate limiting to prevent abuse
+- **Auto HN Generation**: Automatic Hospital Number generation per tenant
+
+## ER Diagram
+
+![ER Diagram](docs/er-diagram.svg)
 
 ## Project Structure
 
@@ -17,218 +53,297 @@ A RESTful API built with Go, Gin, GORM, and PostgreSQL following Clean Architect
 ├── cmd/
 │   ├── api/
 │   │   └── main.go              # API server entry point
-│   └── migrate/
-│       └── main.go              # Migration CLI tool
+│   ├── migrate/
+│   │   └── main.go              # Migration CLI tool
+│   └── tenant/
+│       └── main.go              # Tenant management CLI
 ├── config/
 │   └── config.go                # Configuration management
 ├── internal/
 │   ├── domain/                  # Business entities and interfaces
-│   │   ├── hospital.go
-│   │   ├── staff.go
-│   │   └── patient.go
+│   │   ├── errors.go
+│   │   ├── tenant.go            # Tenant entity
+│   │   ├── staff.go             # Staff entity
+│   │   └── patient.go           # Patient entity
 │   ├── repository/              # Data access layer
-│   │   ├── hospital_repository.go
+│   │   ├── tenant_repository.go
 │   │   ├── staff_repository.go
 │   │   └── patient_repository.go
-│   ├── usecase/                 # Business logic layer
-│   │   ├── hospital_usecase.go
-│   │   ├── staff_usecase.go
-│   │   └── patient_usecase.go
+│   ├── services/                # Business logic layer
+│   │   ├── tenant_service.go
+│   │   ├── staff_service.go
+│   │   └── patient_service.go
 │   ├── delivery/
 │   │   └── http/
 │   │       ├── handler/         # HTTP handlers
-│   │       ├── middleware/      # Auth middleware
-│   │       └── router.go        # Route definitions
+│   │       ├── middleware/      # Auth & Tenant middleware
+│   │       ├── routes/          # Route definitions
+│   │       └── router.go        # Router setup
 │   └── infrastructure/
 │       └── database/
 │           ├── postgres.go      # Database connection
-│           ├── migration.go     # Migration engine
-│           └── migrations.go    # Migration definitions
+│           ├── migrator.go      # Migration engine
+│           ├── tenant_context.go# Tenant DB manager
+│           └── migrations/      # Migration definitions
 ├── pkg/
 │   ├── jwt/                     # JWT utilities
 │   └── utils/                   # Response helpers
-├── env.example
-├── go.mod
+├── nginx/
+│   ├── nginx.conf               # NGINX configuration
+│   └── ssl/                     # SSL certificates
+├── postman/                     # Postman collection & environment
+├── tests/                       # Test files
+├── docker-compose.yml
+├── Dockerfile
 ├── Makefile
 └── README.md
 ```
 
 ## Prerequisites
 
-- Go 1.21 or higher
-- PostgreSQL 14 or higher
+- Go 1.23 or higher
+- PostgreSQL 16 or higher
+- Docker & Docker Compose (optional)
 
-## Getting Started
+## Quick Start with Docker
 
-### 1. Clone the repository
+### 1. Clone and configure
 
 ```bash
 cd HIS_v1
+
+# Create environment file (optional, has defaults)
+cat > .env << EOF
+DB_USER=postgres
+DB_PASSWORD=your_secure_password
+DB_NAME=his_db
+JWT_SECRET_KEY=your-super-secret-key-change-in-production
+EOF
 ```
 
-### 2. Set up environment variables
+### 2. Start services
 
 ```bash
-cp env.example .env
-# Edit .env with your configuration
+# Build and start all services
+docker compose up -d --build
+
+# View logs
+docker compose logs -f api
 ```
 
-### 3. Create PostgreSQL database
+### 3. Create your first tenant
 
 ```bash
-createdb his_db
-# or using make
-make create-db
+# Using docker exec
+docker exec -it his_api ./tenant create \
+  -code=HOSP001 \
+  -name="Bangkok Hospital" \
+  -subdomain=bangkok \
+  -hospital-name="Bangkok General Hospital" \
+  -hospital-code=BKGH0001 \
+  -admin-user=admin \
+  -admin-email=admin@bangkok-hospital.com
 ```
 
-### 4. Install dependencies
+### 4. Access the API
 
 ```bash
+# Health check
+curl http://localhost/health
+
+# Login (use subdomain for tenant isolation)
+curl -X POST http://bangkok.localhost/api/v1/staff/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}'
+```
+
+## Local Development Setup
+
+### 1. Set up environment
+
+```bash
+# Copy example environment
+cp .env.example .env
+
+# Install dependencies
 go mod tidy
-# or using make
-make deps
 ```
 
-### 5. Run migrations
+### 2. Start PostgreSQL
 
 ```bash
-go run cmd/migrate/main.go up
-# or using make
+# Using docker
+docker run -d --name his_postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=his_db \
+  -p 5432:5432 \
+  postgres:16-alpine
+
+# Or create database manually
+createdb -U postgres his_db
+```
+
+### 3. Run migrations
+
+```bash
 make migrate-up
 ```
 
-### 6. Run the application
+### 4. Create a tenant
 
 ```bash
-go run cmd/api/main.go
-# or using make
+make tenant-create \
+  CODE=HOSP001 \
+  NAME="Test Hospital" \
+  SUBDOMAIN=test \
+  HOSPITAL_NAME="Test General Hospital" \
+  HOSPITAL_CODE=TEST0001 \
+  ADMIN_USER=admin \
+  ADMIN_EMAIL=admin@test.com
+```
+
+### 5. Run the server
+
+```bash
 make run
 ```
 
-The server will start on `http://localhost:8080`
+## Multi-Tenant Usage
+
+### Subdomain-based Access
+
+Each tenant is accessed via their subdomain:
+
+```bash
+# Tenant 1: Bangkok Hospital
+curl http://bangkok.localhost/api/v1/staff/login
+
+# Tenant 2: Chiang Mai Hospital  
+curl http://chiangmai.localhost/api/v1/staff/login
+```
+
+### Local Development Subdomains
+
+Add to `/etc/hosts` for local testing:
+
+```
+127.0.0.1 bangkok.localhost
+127.0.0.1 chiangmai.localhost
+```
 
 ## Database Migrations
-
-This project uses a **version-controlled GORM migration system**. Each migration has a unique version and is tracked in a `migrations` table.
 
 ### Migration Commands
 
 ```bash
 # Run all pending migrations
 make migrate-up
-# or: go run cmd/migrate/main.go up
 
 # Rollback the last migration
 make migrate-down
-# or: go run cmd/migrate/main.go down
 
 # Show migration status
 make migrate-status
-# or: go run cmd/migrate/main.go status
 
 # Rollback all migrations
 make migrate-reset
-# or: go run cmd/migrate/main.go reset
-```
-
-### Migration Status Example
-
-```
-=== Migration Status ===
-VERSION              NAME                                     STATUS     APPLIED AT
---------------------------------------------------------------------------------
-20240101_001         create_hospitals_table                   Applied    2024-01-15 10:30:00
-20240101_002         create_staffs_table                      Applied    2024-01-15 10:30:00
-20240101_003         create_patients_table                    Applied    2024-01-15 10:30:00
-20240101_004         seed_default_data                        Applied    2024-01-15 10:30:00
 ```
 
 ### Creating New Migrations
 
-Add new migrations in `internal/infrastructure/database/migrations.go`:
+Add new migrations in `internal/infrastructure/database/migrations/`:
 
 ```go
-// 1. Create the migration function
-func migration_20240615_005_add_department_table() MigrationDefinition {
+func Migration_YYYYMMDD_XXX_description() MigrationDefinition {
     return MigrationDefinition{
-        Version: "20240615_005",
-        Name:    "add_department_table",
+        Version: "YYYYMMDD_XXX",
+        Name:    "description",
         Up: func(db *gorm.DB) error {
-            type Department struct {
-                ID   uint   `gorm:"primaryKey"`
-                Name string `gorm:"not null"`
-            }
-            return db.AutoMigrate(&Department{})
+            // Migration logic
+            return db.AutoMigrate(&YourModel{})
         },
         Down: func(db *gorm.DB) error {
-            return db.Migrator().DropTable("departments")
+            return db.Migrator().DropTable("your_table")
         },
     }
 }
-
-// 2. Add it to GetMigrations() slice
-func GetMigrations() []MigrationDefinition {
-    return []MigrationDefinition{
-        migration_20240101_001_create_hospitals_table(),
-        migration_20240101_002_create_staffs_table(),
-        migration_20240101_003_create_patients_table(),
-        migration_20240101_004_seed_default_data(),
-        migration_20240615_005_add_department_table(), // Add here
-    }
-}
 ```
 
-### Version Naming Convention
+## Tenant Management
 
+### Create a Tenant
+
+```bash
+# Interactive (prompts for password)
+make tenant-create \
+  CODE=HOSP001 \
+  NAME="Hospital Name" \
+  SUBDOMAIN=hospital \
+  HOSPITAL_NAME="Full Hospital Name" \
+  HOSPITAL_CODE=HOSP0001 \
+  ADMIN_USER=admin \
+  ADMIN_EMAIL=admin@hospital.com
+
+# Non-interactive (for scripts)
+make tenant-create \
+  CODE=HOSP001 \
+  NAME="Hospital Name" \
+  SUBDOMAIN=hospital \
+  HOSPITAL_NAME="Full Hospital Name" \
+  HOSPITAL_CODE=HOSP0001 \
+  ADMIN_USER=admin \
+  ADMIN_EMAIL=admin@hospital.com \
+  ADMIN_PASS=secretpassword
 ```
-YYYYMMDD_XXX_description
-│        │   │
-│        │   └── Brief description (snake_case)
-│        └────── Sequence number (001, 002, ...)
-└─────────────── Date (Year/Month/Day)
+
+### List All Tenants
+
+```bash
+make tenant-list
 ```
 
 ## API Endpoints
 
 ### Health Check
-- `GET /health` - Check API status
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Check API status |
 
 ### Staff APIs
-| Method | Endpoint | Description | Auth Required | Admin Only |
-|--------|----------|-------------|---------------|------------|
-| POST | `/staff/login` | Staff login | No | No |
-| POST | `/staff/logout` | Staff logout | Yes | No |
-| GET | `/staff/` | Get all staff | Yes | No |
-| GET | `/staff/:id` | Get staff by ID | Yes | No |
-| POST | `/staff/create` | Create new staff | Yes | Yes |
-| PUT | `/staff/update/:id` | Update staff | Yes | No |
-| DELETE | `/staff/delete/:id` | Delete staff | Yes | Yes |
 
-### Hospital APIs
-| Method | Endpoint | Description | Auth Required | Admin Only |
-|--------|----------|-------------|---------------|------------|
-| GET | `/hospital/` | Get all hospitals | Yes | No |
-| GET | `/hospital/:id` | Get hospital by ID | Yes | No |
-| POST | `/hospital/create` | Create new hospital | Yes | Yes |
-| PUT | `/hospital/update/:id` | Update hospital | Yes | Yes |
-| DELETE | `/hospital/delete/:id` | Delete hospital | Yes | Yes |
+| Method | Endpoint | Description | Auth | Admin |
+|--------|----------|-------------|------|-------|
+| POST | `/api/v1/staff/login` | Staff login | ❌ | ❌ |
+| GET | `/api/v1/staff/` | Get all staff | ✅ | ❌ |
+| GET | `/api/v1/staff/:id` | Get staff by ID | ✅ | ❌ |
+| POST | `/api/v1/staff/create` | Create new staff | ✅ | ✅ |
+| PUT | `/api/v1/staff/update/:id` | Update staff | ✅ | ❌ |
+| DELETE | `/api/v1/staff/delete/:id` | Delete staff | ✅ | ✅ |
 
 ### Patient APIs
-| Method | Endpoint | Description | Auth Required | Admin Only |
-|--------|----------|-------------|---------------|------------|
-| GET | `/patient/search/:id` | Search patient by ID | Yes | No |
-| POST | `/patient/create` | Create new patient | Yes | No |
-| PUT | `/patient/update/:id` | Update patient | Yes | No |
-| DELETE | `/patient/delete/:id` | Delete patient | Yes | No |
+
+| Method | Endpoint | Description | Auth | Admin |
+|--------|----------|-------------|------|-------|
+| GET | `/api/v1/patient/search` | Search patients | ✅ | ❌ |
+| GET | `/api/v1/patient/search/:id` | Get patient by ID | ✅ | ❌ |
+| POST | `/api/v1/patient/create` | Create patient | ✅ | ❌ |
+| PUT | `/api/v1/patient/update/:id` | Full update | ✅ | ❌ |
+| PATCH | `/api/v1/patient/update/:id` | Partial update | ✅ | ❌ |
+| DELETE | `/api/v1/patient/delete/:id` | Delete patient | ✅ | ❌ |
 
 ## Authentication
 
 ### Login
 
 ```bash
-curl -X POST http://localhost:8080/staff/login \
+curl -X POST http://bangkok.localhost/api/v1/staff/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{
+    "username": "admin",
+    "password": "admin123"
+  }'
 ```
 
 Response:
@@ -241,7 +356,9 @@ Response:
     "staff": {
       "id": 1,
       "username": "admin",
-      ...
+      "staff_code": "STF00001",
+      "email": "admin@hospital.com",
+      "is_admin": true
     }
   }
 }
@@ -249,66 +366,127 @@ Response:
 
 ### Using the Token
 
-Include the JWT token in the Authorization header:
-
 ```bash
-curl -X GET http://localhost:8080/staff/ \
+curl -X GET http://bangkok.localhost/api/v1/staff/ \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
 ```
 
-## Default Admin Credentials
+## Data Models
 
-- **Username**: admin
-- **Password**: admin123
+### Tenant (Public Schema)
 
-⚠️ **Important**: Change the default credentials in production!
-
-## Models
-
-### Hospital
-| Field | Type | Constraints |
+| Field | Type | Description |
 |-------|------|-------------|
-| name | string | unique, not null |
-| hospital_code | string | unique, not null |
-| phone_number | string | unique, not null |
-| email | string | - |
-| address | string | - |
-| hn_running_number | int | default: 0 |
+| id | uint | Primary key |
+| tenant_code | string | Unique tenant code |
+| name | string | Tenant display name |
+| schema_name | string | PostgreSQL schema name |
+| subdomain | string | URL subdomain |
+| is_active | bool | Tenant active status |
+| hospital_name | string | Hospital full name |
+| hospital_code | string | 8-char hospital code |
+| address | string | Hospital address |
+| hn_running | uint64 | HN sequence counter |
 
-### Staff
-| Field | Type | Constraints |
-|-------|------|-------------|
-| username | string | unique, not null |
-| password | string | hashed, not null |
-| staff_code | string | - |
-| phone_number | string | unique, not null |
-| email | string | unique, not null |
-| first_name | string | - |
-| last_name | string | - |
-| hospital_id | uint | foreign key |
-| is_admin | bool | default: false |
+### Staff (Tenant Schema)
 
-### Patient
-| Field | Type | Constraints |
+| Field | Type | Description |
 |-------|------|-------------|
-| first_name_th | string | - |
-| last_name_th | string | - |
-| middle_name_th | string | - |
-| first_name_en | string | - |
-| last_name_en | string | - |
-| middle_name_en | string | - |
-| date_of_birth | time.Time | - |
-| nick_name_th | string | - |
-| nick_name_en | string | - |
-| patient_hn | string | unique, not null, auto-generated |
-| national_id | string | unique |
-| passport_id | string | unique |
-| phone_number | string | unique |
-| email | string | unique |
-| gender | string | - |
-| nationality | string | - |
-| blood_grp | string | - |
-| hospital_id | uint | foreign key |
+| id | uint | Primary key |
+| username | string | Unique login username |
+| password | string | Hashed password |
+| staff_code | string | Auto-generated staff code |
+| phone_number | string | Contact phone |
+| email | string | Email address |
+| first_name | string | First name |
+| last_name | string | Last name |
+| is_admin | bool | Admin privileges |
+
+### Patient (Tenant Schema)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | uint | Primary key |
+| patient_hn | string | Auto-generated HN |
+| first_name_th | string | Thai first name |
+| last_name_th | string | Thai last name |
+| first_name_en | string | English first name |
+| last_name_en | string | English last name |
+| date_of_birth | date | Birth date |
+| national_id | string | National ID (13 digits) |
+| passport_id | string | Passport number |
+| phone_number | string | Contact phone |
+| email | string | Email address |
+| gender | enum | M, F, OTHER |
+| nationality | string | Nationality |
+| blood_grp | enum | A, B, O, AB |
+
+## Docker Commands
+
+```bash
+# Start all services
+docker compose up -d
+
+# Stop all services
+docker compose down
+
+# View logs
+docker compose logs -f
+
+# Rebuild and restart
+docker compose up -d --build
+
+# Access API container
+docker exec -it his_api sh
+
+# Access PostgreSQL
+docker exec -it his_postgres psql -U postgres -d his_db
+
+# Run migrations in container
+docker exec -it his_api ./migrate up
+
+# Create tenant in container
+docker exec -it his_api ./tenant create ...
+```
+
+## Testing
+
+```bash
+# Run all tests
+make test
+
+# Run with verbose output
+make test-verbose
+
+# Run with coverage
+make test-cover
+
+# Generate HTML coverage report
+make test-cover-html
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| SERVER_PORT | 8080 | API server port |
+| DB_HOST | localhost | PostgreSQL host |
+| DB_PORT | 5432 | PostgreSQL port |
+| DB_USER | postgres | Database user |
+| DB_PASSWORD | postgres | Database password |
+| DB_NAME | his_db | Database name |
+| DB_SSLMODE | disable | SSL mode |
+| JWT_SECRET_KEY | - | JWT signing key |
+| JWT_EXPIRES_IN_HOURS | 24 | Token expiry |
+
+## Security Features
+
+- **Schema Isolation**: Each tenant's data is in a separate PostgreSQL schema
+- **JWT Authentication**: Stateless authentication with configurable expiry
+- **Password Hashing**: bcrypt hashing for all passwords
+- **Rate Limiting**: NGINX rate limits (30 req/s API, 5 req/min login)
+- **Security Headers**: X-Frame-Options, X-Content-Type-Options, etc.
+- **Non-root Container**: API runs as non-privileged user
 
 ## License
 

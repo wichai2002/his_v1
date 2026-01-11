@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <defs>
+    <style>
+      .title { font: bold 24px 'Segoe UI', Arial, sans-serif; fill: #1a1a2e; }
+      .subtitle { font: 14px 'Segoe UI', Arial, sans-serif; fill: #666; }
+      .table-header { font: bold 14px 'Segoe UI', Arial, sans-serif; fill: white; }
+      .table-name { font: bold 16px 'Segoe UI', Arial, sans-serif; fill: white; }
+      .column-name { font: 12px 'Consolas', monospace; fill: #333; }
+      .column-type { font: 12px 'Consolas', monospace; fill: #666; }
+      .pk { font: bold 12px 'Consolas', monospace; fill: #e94560; }
+      .fk { font: bold 12px 'Consolas', monospace; fill: #0f3460; }
+      .schema-label { font: bold 12px 'Segoe UI', Arial, sans-serif; fill: #666; }
+      .legend-text { font: 12px 'Segoe UI', Arial, sans-serif; fill: #333; }
+    </style>
+    <linearGradient id="headerGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="headerGradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#11998e"/>
+      <stop offset="100%" style="stop-color:#38ef7d"/>
+    </linearGradient>
+    <linearGradient id="headerGradient3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ee0979"/>
+      <stop offset="100%" style="stop-color:#ff6a00"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="3" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="600" y="45" text-anchor="middle" class="title">Hospital Information System - ER Diagram</text>
+  <text x="600" y="70" text-anchor="middle" class="subtitle">Multi-Tenant Architecture with Schema-based Isolation</text>
+
+  <!-- Legend -->
+  <g transform="translate(950, 100)">
+    <rect x="0" y="0" width="220" height="100" rx="8" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+    <text x="110" y="25" text-anchor="middle" class="schema-label">Legend</text>
+    <circle cx="20" cy="50" r="6" fill="#e94560"/>
+    <text x="35" y="54" class="legend-text">PK - Primary Key</text>
+    <circle cx="20" cy="75" r="6" fill="#0f3460"/>
+    <text x="35" y="79" class="legend-text">FK - Foreign Key</text>
+    <rect x="120" y="44" width="12" height="12" fill="#667eea" rx="2"/>
+    <text x="140" y="54" class="legend-text">Public</text>
+    <rect x="120" y="69" width="12" height="12" fill="#11998e" rx="2"/>
+    <text x="140" y="79" class="legend-text">Tenant</text>
+  </g>
+
+  <!-- PUBLIC SCHEMA Section -->
+  <g transform="translate(50, 120)">
+    <rect x="0" y="0" width="400" height="380" rx="12" fill="white" stroke="#667eea" stroke-width="2" stroke-dasharray="8,4" filter="url(#shadow)"/>
+    <text x="200" y="-10" text-anchor="middle" class="schema-label">📦 PUBLIC SCHEMA</text>
+    
+    <!-- Tenants Table -->
+    <g transform="translate(25, 30)">
+      <rect x="0" y="0" width="350" height="340" rx="8" fill="white" stroke="#e0e0e0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="350" height="40" rx="8" fill="url(#headerGradient1)"/>
+      <rect x="0" y="32" width="350" height="8" fill="url(#headerGradient1)"/>
+      <text x="175" y="26" text-anchor="middle" class="table-name">🏥 tenants</text>
+      
+      <!-- Columns -->
+      <g transform="translate(15, 55)">
+        <text x="0" y="0" class="pk">PK</text>
+        <text x="30" y="0" class="column-name">id</text>
+        <text x="200" y="0" class="column-type">BIGINT</text>
+        
+        <text x="30" y="22" class="column-name">tenant_code</text>
+        <text x="200" y="22" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="44" class="column-name">name</text>
+        <text x="200" y="44" class="column-type">VARCHAR NOT NULL</text>
+        
+        <text x="30" y="66" class="column-name">schema_name</text>
+        <text x="200" y="66" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="88" class="column-name">subdomain</text>
+        <text x="200" y="88" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="110" class="column-name">is_active</text>
+        <text x="200" y="110" class="column-type">BOOLEAN</text>
+        
+        <text x="30" y="132" class="column-name">database_host</text>
+        <text x="200" y="132" class="column-type">VARCHAR</text>
+        
+        <line x1="0" y1="145" x2="320" y2="145" stroke="#e0e0e0" stroke-width="1"/>
+        <text x="160" y="162" text-anchor="middle" style="font: italic 11px 'Segoe UI'; fill: #888;">Hospital Settings</text>
+        
+        <text x="30" y="182" class="column-name">hospital_name</text>
+        <text x="200" y="182" class="column-type">VARCHAR(150)</text>
+        
+        <text x="30" y="204" class="column-name">hospital_code</text>
+        <text x="200" y="204" class="column-type">CHAR(8) UNIQUE</text>
+        
+        <text x="30" y="226" class="column-name">address</text>
+        <text x="200" y="226" class="column-type">TEXT NULL</text>
+        
+        <text x="30" y="248" class="column-name">hn_running</text>
+        <text x="200" y="248" class="column-type">BIGINT DEFAULT 0</text>
+        
+        <line x1="0" y1="261" x2="320" y2="261" stroke="#e0e0e0" stroke-width="1"/>
+        
+        <text x="30" y="278" class="column-name">created_at</text>
+        <text x="200" y="278" class="column-type">TIMESTAMP</text>
+        
+        <text x="30" y="298" class="column-name">updated_at</text>
+        <text x="200" y="298" class="column-type">TIMESTAMP</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- TENANT SCHEMA Section -->
+  <g transform="translate(500, 120)">
+    <rect x="0" y="0" width="650" height="700" rx="12" fill="white" stroke="#11998e" stroke-width="2" stroke-dasharray="8,4" filter="url(#shadow)"/>
+    <text x="325" y="-10" text-anchor="middle" class="schema-label">🔒 TENANT SCHEMA (e.g., tenant_bangkok)</text>
+    
+    <!-- Staffs Table -->
+    <g transform="translate(25, 30)">
+      <rect x="0" y="0" width="280" height="290" rx="8" fill="white" stroke="#e0e0e0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="280" height="40" rx="8" fill="url(#headerGradient2)"/>
+      <rect x="0" y="32" width="280" height="8" fill="url(#headerGradient2)"/>
+      <text x="140" y="26" text-anchor="middle" class="table-name">👤 staffs</text>
+      
+      <g transform="translate(15, 55)">
+        <text x="0" y="0" class="pk">PK</text>
+        <text x="30" y="0" class="column-name">id</text>
+        <text x="150" y="0" class="column-type">BIGINT</text>
+        
+        <text x="30" y="22" class="column-name">username</text>
+        <text x="150" y="22" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="44" class="column-name">password</text>
+        <text x="150" y="44" class="column-type">VARCHAR (hashed)</text>
+        
+        <text x="30" y="66" class="column-name">staff_code</text>
+        <text x="150" y="66" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="88" class="column-name">phone_number</text>
+        <text x="150" y="88" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="110" class="column-name">email</text>
+        <text x="150" y="110" class="column-type">VARCHAR UNIQUE</text>
+        
+        <text x="30" y="132" class="column-name">first_name</text>
+        <text x="150" y="132" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="154" class="column-name">last_name</text>
+        <text x="150" y="154" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="176" class="column-name">is_admin</text>
+        <text x="150" y="176" class="column-type">BOOLEAN</text>
+        
+        <line x1="0" y1="189" x2="250" y2="189" stroke="#e0e0e0" stroke-width="1"/>
+        
+        <text x="30" y="206" class="column-name">created_at</text>
+        <text x="150" y="206" class="column-type">TIMESTAMP</text>
+        
+        <text x="30" y="226" class="column-name">updated_at</text>
+        <text x="150" y="226" class="column-type">TIMESTAMP</text>
+      </g>
+    </g>
+    
+    <!-- Patients Table -->
+    <g transform="translate(340, 30)">
+      <rect x="0" y="0" width="280" height="650" rx="8" fill="white" stroke="#e0e0e0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="280" height="40" rx="8" fill="url(#headerGradient3)"/>
+      <rect x="0" y="32" width="280" height="8" fill="url(#headerGradient3)"/>
+      <text x="140" y="26" text-anchor="middle" class="table-name">🩺 patients</text>
+      
+      <g transform="translate(15, 55)">
+        <text x="0" y="0" class="pk">PK</text>
+        <text x="30" y="0" class="column-name">id</text>
+        <text x="150" y="0" class="column-type">BIGINT</text>
+        
+        <text x="30" y="22" class="column-name">patient_hn</text>
+        <text x="150" y="22" class="column-type">VARCHAR UNIQUE</text>
+        
+        <line x1="0" y1="35" x2="250" y2="35" stroke="#e0e0e0" stroke-width="1"/>
+        <text x="125" y="52" text-anchor="middle" style="font: italic 11px 'Segoe UI'; fill: #888;">Thai Name</text>
+        
+        <text x="30" y="72" class="column-name">first_name_th</text>
+        <text x="150" y="72" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="94" class="column-name">middle_name_th</text>
+        <text x="150" y="94" class="column-type">VARCHAR NULL</text>
+        
+        <text x="30" y="116" class="column-name">last_name_th</text>
+        <text x="150" y="116" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="138" class="column-name">nick_name_th</text>
+        <text x="150" y="138" class="column-type">VARCHAR</text>
+        
+        <line x1="0" y1="151" x2="250" y2="151" stroke="#e0e0e0" stroke-width="1"/>
+        <text x="125" y="168" text-anchor="middle" style="font: italic 11px 'Segoe UI'; fill: #888;">English Name</text>
+        
+        <text x="30" y="188" class="column-name">first_name_en</text>
+        <text x="150" y="188" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="210" class="column-name">middle_name_en</text>
+        <text x="150" y="210" class="column-type">VARCHAR NULL</text>
+        
+        <text x="30" y="232" class="column-name">last_name_en</text>
+        <text x="150" y="232" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="254" class="column-name">nick_name_en</text>
+        <text x="150" y="254" class="column-type">VARCHAR</text>
+        
+        <line x1="0" y1="267" x2="250" y2="267" stroke="#e0e0e0" stroke-width="1"/>
+        <text x="125" y="284" text-anchor="middle" style="font: italic 11px 'Segoe UI'; fill: #888;">Personal Info</text>
+        
+        <text x="30" y="304" class="column-name">date_of_birth</text>
+        <text x="150" y="304" class="column-type">DATE</text>
+        
+        <text x="30" y="326" class="column-name">gender</text>
+        <text x="150" y="326" class="column-type">ENUM(M,F,OTHER)</text>
+        
+        <text x="30" y="348" class="column-name">nationality</text>
+        <text x="150" y="348" class="column-type">VARCHAR</text>
+        
+        <text x="30" y="370" class="column-name">blood_grp</text>
+        <text x="150" y="370" class="column-type">ENUM(A,B,O,AB)</text>
+        
+        <line x1="0" y1="383" x2="250" y2="383" stroke="#e0e0e0" stroke-width="1"/>
+        <text x="125" y="400" text-anchor="middle" style="font: italic 11px 'Segoe UI'; fill: #888;">Identity</text>
+        
+        <text x="30" y="420" class="column-name">national_id</text>
+        <text x="150" y="420" class="column-type">VARCHAR(13) UNIQUE</text>
+        
+        <text x="30" y="442" class="column-name">passport_id</text>
+        <text x="150" y="442" class="column-type">VARCHAR UNIQUE</text>
+        
+        <line x1="0" y1="455" x2="250" y2="455" stroke="#e0e0e0" stroke-width="1"/>
+        <text x="125" y="472" text-anchor="middle" style="font: italic 11px 'Segoe UI'; fill: #888;">Contact</text>
+        
+        <text x="30" y="492" class="column-name">phone_number</text>
+        <text x="150" y="492" class="column-type">VARCHAR(10) UNIQUE</text>
+        
+        <text x="30" y="514" class="column-name">email</text>
+        <text x="150" y="514" class="column-type">VARCHAR UNIQUE</text>
+        
+        <line x1="0" y1="527" x2="250" y2="527" stroke="#e0e0e0" stroke-width="1"/>
+        
+        <text x="30" y="547" class="column-name">created_at</text>
+        <text x="150" y="547" class="column-type">TIMESTAMP</text>
+        
+        <text x="30" y="569" class="column-name">updated_at</text>
+        <text x="150" y="569" class="column-type">TIMESTAMP</text>
+        
+        <text x="30" y="591" class="column-name">deleted_at</text>
+        <text x="150" y="591" class="column-type">TIMESTAMP NULL</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Relationship Arrow: Tenant creates schema -->
+  <g>
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#667eea"/>
+      </marker>
+    </defs>
+    <path d="M 450 310 C 480 310, 480 260, 500 260" stroke="#667eea" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+    <text x="455" y="240" style="font: 11px 'Segoe UI'; fill: #667eea;">creates schema</text>
+  </g>
+
+  <!-- HN Generation Arrow -->
+  <g>
+    <path d="M 375 470 L 420 470 C 460 470, 480 600, 520 600 L 840 600" stroke="#ee0979" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+    <text x="420" y="530" style="font: 11px 'Segoe UI'; fill: #ee0979;">hn_running → patient_hn</text>
+  </g>
+
+  <!-- Footer Note -->
+  <g transform="translate(50, 860)">
+    <text x="0" y="0" style="font: 11px 'Segoe UI'; fill: #888;">
+      Note: Each tenant has isolated staffs and patients tables in their own PostgreSQL schema.
+    </text>
+    <text x="0" y="18" style="font: 11px 'Segoe UI'; fill: #888;">
+      The tenant's hospital_code + hn_running are used to generate unique patient_hn values (e.g., BKGH0001-000001).
+    </text>
+  </g>
+
+</svg>

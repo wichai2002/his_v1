@@ -16,7 +16,7 @@ type Tenant struct {
 
 	// Hospital settings
 	HospitalName string  `json:"hospital_name" gorm:"not null;size:150" binding:"required,min=1,max=150"`
-	HospitalCode string  `json:"hospital_code" gorm:"uniqueIndex;not null;size:8" binding:"required,len=8"`
+	HospitalCode string  `json:"hospital_code" gorm:"not null;size:8" binding:"required,len=8"`
 	Address      *string `json:"address" gorm:"type:text"` // Can be null
 	HNRunning    uint64  `json:"hn_running" gorm:"not null;default:0"`
 }

@@ -22,10 +22,6 @@ func Migration_20240101_007_AddHospitalFieldsToTenants() MigrationDefinition {
 				if err := db.Exec("ALTER TABLE tenants ADD COLUMN hospital_code VARCHAR(8) NOT NULL DEFAULT ''").Error; err != nil {
 					return err
 				}
-				// Add unique index
-				if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_hospital_code ON tenants(hospital_code) WHERE hospital_code != ''").Error; err != nil {
-					return err
-				}
 			}
 
 			// Add address column (nullable)
