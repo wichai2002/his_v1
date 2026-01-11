@@ -11,12 +11,13 @@ import (
 func RegisterStaffRoutes(router *gin.RouterGroup, staffHandler *handler.StaffHandler, jwtService jwt.JWTService) {
 	staffGroup := router.Group("/staff")
 	{
-		// Public routes
-		staffGroup.POST("/login", staffHandler.Login)
+		// Public routes - login requires tenant context
+		staffGroup.POST("/login", middleware.TenantRequiredMiddleware(), staffHandler.Login)
 
-		// Protected routes
+		// Protected routes - require auth and tenant context
 		protected := staffGroup.Group("")
 		protected.Use(middleware.AuthMiddleware(jwtService))
+		protected.Use(middleware.TenantRequiredMiddleware())
 		{
 			protected.POST("/logout", staffHandler.Logout)
 			protected.GET("/", staffHandler.GetAll)
@@ -27,6 +28,7 @@ func RegisterStaffRoutes(router *gin.RouterGroup, staffHandler *handler.StaffHan
 		// Admin only routes
 		admin := staffGroup.Group("")
 		admin.Use(middleware.AuthMiddleware(jwtService), middleware.AdminMiddleware())
+		admin.Use(middleware.TenantRequiredMiddleware())
 		{
 			admin.POST("/create", staffHandler.Create)
 			admin.DELETE("/delete/:id", staffHandler.Delete)

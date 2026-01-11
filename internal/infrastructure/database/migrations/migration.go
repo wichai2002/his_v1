@@ -15,13 +15,23 @@ type MigrationDefinition struct {
 	Down    MigrationFunc
 }
 
-// GetAllMigrations returns all migration definitions
-// Add new migrations to this slice when creating new migration files
+// GetAllMigrations returns migration definitions for the PUBLIC schema only
+// NOTE: Staff and Patient tables are tenant-specific and created via tenant_service.go
+// when setting up a new tenant schema - they should NOT be in public schema
 func GetAllMigrations() []MigrationDefinition {
 	return []MigrationDefinition{
-		Migration_20240101_001_CreateHospitalsTable(),
+		Migration_20240101_005_CreateTenantsTable(),
+		Migration_20240101_007_AddHospitalFieldsToTenants(),
+	}
+}
+
+// GetAllMigrationsIncludingLegacy returns ALL migrations including legacy ones
+// This is needed for rollback operations to properly find migration definitions
+func GetAllMigrationsIncludingLegacy() []MigrationDefinition {
+	return []MigrationDefinition{
 		Migration_20240101_002_CreateStaffsTable(),
 		Migration_20240101_003_CreatePatientsTable(),
-		Migration_20240101_004_SeedDefaultData(),
+		Migration_20240101_005_CreateTenantsTable(),
+		Migration_20240101_007_AddHospitalFieldsToTenants(),
 	}
 }

@@ -1,0 +1,645 @@
+{
+	"info": {
+		"_postman_id": "his-v1-api-collection",
+		"name": "HIS V1 API",
+		"description": "Hospital Information System API v1\n\n## Multi-Tenant Architecture\nThis API uses subdomain-based multi-tenancy. Each hospital/tenant has its own subdomain.\n\n**Example:** `hospital1.localhost:8080/api/v1/...`\n\n## Authentication\nMost endpoints require JWT Bearer token authentication. Get the token from the Login endpoint.\n\n## Response Format\n```json\n{\n  \"success\": true/false,\n  \"message\": \"...\",\n  \"data\": { ... },\n  \"error\": \"...\" // only on error\n}\n```",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://{{tenant}}.localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "tenant",
+			"value": "hospital1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["health"]
+						},
+						"description": "Check if the API server is running. No authentication or tenant required."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "http://localhost:8080/health",
+									"protocol": "http",
+									"host": ["localhost"],
+									"port": "8080",
+									"path": ["health"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"status\": \"ok\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Server health check endpoints"
+		},
+		{
+			"name": "Staff",
+			"item": [
+				{
+					"name": "Authentication",
+					"item": [
+						{
+							"name": "Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    if (jsonData.success && jsonData.data && jsonData.data.token) {",
+											"        pm.collectionVariables.set('token', jsonData.data.token);",
+											"        console.log('Token saved to collection variables');",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "login"]
+								},
+								"description": "Authenticate staff and receive JWT token.\n\n**Required:** Tenant context (subdomain)\n\n**Note:** The test script automatically saves the token to collection variables."
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "POST",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"password123\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/v1/staff/login",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "v1", "staff", "login"]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"body": "{\n  \"success\": true,\n  \"message\": \"login successful\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"staff\": {\n      \"id\": 1,\n      \"username\": \"admin\",\n      \"staff_code\": \"STF001\",\n      \"phone_number\": \"0812345678\",\n      \"email\": \"admin@hospital.com\",\n      \"first_name\": \"Admin\",\n      \"last_name\": \"User\",\n      \"is_admin\": true\n    }\n  }\n}"
+								},
+								{
+									"name": "Unauthorized",
+									"originalRequest": {
+										"method": "POST",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"wrongpassword\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/v1/staff/login",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "v1", "staff", "login"]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"body": "{\n  \"success\": false,\n  \"error\": \"invalid credentials\"\n}"
+								}
+							]
+						},
+						{
+							"name": "Logout",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/logout",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "logout"]
+								},
+								"description": "Logout staff. Client should discard the token.\n\n**Required:** Authentication, Tenant context"
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "POST",
+										"url": {
+											"raw": "{{baseUrl}}/api/v1/staff/logout",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "v1", "staff", "logout"]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"body": "{\n  \"success\": true,\n  \"message\": \"logout successful\"\n}"
+								}
+							]
+						}
+					],
+					"description": "Staff authentication endpoints"
+				},
+				{
+					"name": "Get All Staff",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/staff/",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "staff", ""]
+						},
+						"description": "Get all staff members.\n\n**Required:** Authentication, Tenant context"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", ""]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"success\",\n  \"data\": [\n    {\n      \"ID\": 1,\n      \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n      \"UpdatedAt\": \"2024-01-01T00:00:00Z\",\n      \"DeletedAt\": null,\n      \"username\": \"admin\",\n      \"staff_code\": \"STF001\",\n      \"phone_number\": \"0812345678\",\n      \"email\": \"admin@hospital.com\",\n      \"first_name\": \"Admin\",\n      \"last_name\": \"User\",\n      \"is_admin\": true\n    }\n  ]\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Staff by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/staff/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "staff", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Staff ID"
+								}
+							]
+						},
+						"description": "Get a staff member by ID.\n\n**Required:** Authentication, Tenant context"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/1",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "1"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"success\",\n  \"data\": {\n    \"ID\": 1,\n    \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n    \"UpdatedAt\": \"2024-01-01T00:00:00Z\",\n    \"DeletedAt\": null,\n    \"username\": \"admin\",\n    \"staff_code\": \"STF001\",\n    \"phone_number\": \"0812345678\",\n    \"email\": \"admin@hospital.com\",\n    \"first_name\": \"Admin\",\n    \"last_name\": \"User\",\n    \"is_admin\": true\n  }\n}"
+						},
+						{
+							"name": "Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/999",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "999"]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"body": "{\n  \"success\": false,\n  \"error\": \"staff not found\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Staff (Admin Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"newstaff\",\n    \"password\": \"password123\",\n    \"phone_number\": \"0898765432\",\n    \"email\": \"newstaff@hospital.com\",\n    \"first_name\": \"New\",\n    \"last_name\": \"Staff\",\n    \"is_admin\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/staff/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "staff", "create"]
+						},
+						"description": "Create a new staff member.\n\n**Required:** Authentication (Admin), Tenant context\n\n**Note:** `staff_code` is auto-generated by the system."
+					},
+					"response": [
+						{
+							"name": "Created",
+							"originalRequest": {
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"newstaff\",\n    \"password\": \"password123\",\n    \"phone_number\": \"0898765432\",\n    \"email\": \"newstaff@hospital.com\",\n    \"first_name\": \"New\",\n    \"last_name\": \"Staff\",\n    \"is_admin\": false\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/create",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "create"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"body": "{\n  \"success\": true,\n  \"message\": \"staff created successfully\",\n  \"data\": {\n    \"ID\": 2,\n    \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n    \"UpdatedAt\": \"2024-01-01T00:00:00Z\",\n    \"DeletedAt\": null,\n    \"username\": \"newstaff\",\n    \"staff_code\": \"STF002\",\n    \"phone_number\": \"0898765432\",\n    \"email\": \"newstaff@hospital.com\",\n    \"first_name\": \"New\",\n    \"last_name\": \"Staff\",\n    \"is_admin\": false\n  }\n}"
+						},
+						{
+							"name": "Forbidden (Not Admin)",
+							"originalRequest": {
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"newstaff\",\n    \"password\": \"password123\",\n    \"phone_number\": \"0898765432\",\n    \"email\": \"newstaff@hospital.com\",\n    \"first_name\": \"New\",\n    \"last_name\": \"Staff\",\n    \"is_admin\": false\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/create",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "create"]
+								}
+							},
+							"status": "Forbidden",
+							"code": 403,
+							"body": "{\n  \"success\": false,\n  \"error\": \"admin access required\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Update Staff",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"staff_code\": \"STF001\",\n    \"phone_number\": \"0812345678\",\n    \"email\": \"updated@hospital.com\",\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"is_admin\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/staff/update/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "staff", "update", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Staff ID"
+								}
+							]
+						},
+						"description": "Update a staff member.\n\n**Required:** Authentication, Tenant context"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "PUT",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"staff_code\": \"STF001\",\n    \"phone_number\": \"0812345678\",\n    \"email\": \"updated@hospital.com\",\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"is_admin\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/update/1",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "update", "1"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"staff updated successfully\",\n  \"data\": {\n    \"ID\": 1,\n    \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n    \"UpdatedAt\": \"2024-01-02T00:00:00Z\",\n    \"DeletedAt\": null,\n    \"username\": \"admin\",\n    \"staff_code\": \"STF001\",\n    \"phone_number\": \"0812345678\",\n    \"email\": \"updated@hospital.com\",\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"is_admin\": true\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Delete Staff (Admin Only)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/staff/delete/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "staff", "delete", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "2",
+									"description": "Staff ID"
+								}
+							]
+						},
+						"description": "Delete a staff member.\n\n**Required:** Authentication (Admin), Tenant context"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "DELETE",
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/staff/delete/2",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "staff", "delete", "2"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"staff deleted successfully\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Staff management endpoints"
+		},
+		{
+			"name": "Patient",
+			"item": [
+				{
+					"name": "Search Patients",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/patient/search?query=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "patient", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "",
+									"description": "Search query (name, HN, national ID, passport, phone, email)"
+								}
+							]
+						},
+						"description": "Search for patients.\n\n**Required:** Authentication, Tenant context\n\n**Query Parameters:**\n- `query`: Search term (searches across name, HN, national ID, passport, phone, email)"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/patient/search?query=john",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "patient", "search"],
+									"query": [
+										{
+											"key": "query",
+											"value": "john"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"success\",\n  \"data\": [\n    {\n      \"ID\": 1,\n      \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n      \"UpdatedAt\": \"2024-01-01T00:00:00Z\",\n      \"DeletedAt\": null,\n      \"first_name_th\": \"จอห์น\",\n      \"last_name_th\": \"โด\",\n      \"middle_name_th\": \"\",\n      \"first_name_en\": \"John\",\n      \"last_name_en\": \"Doe\",\n      \"middle_name_en\": \"\",\n      \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n      \"nick_name_th\": \"จอห์น\",\n      \"nick_name_en\": \"Johnny\",\n      \"patient_hn\": \"HN00000001\",\n      \"national_id\": \"1234567890123\",\n      \"passport_id\": \"\",\n      \"phone_number\": \"0812345678\",\n      \"email\": \"john.doe@email.com\",\n      \"gender\": \"M\",\n      \"nationality\": \"Thai\",\n      \"blood_grp\": \"O\"\n    }\n  ]\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Patient",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"\",\n    \"date_of_birth\": \"1985-03-20\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"\",\n    \"phone_number\": \"0891234567\",\n    \"email\": \"somchai@email.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/patient/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "patient", "create"]
+						},
+						"description": "Create a new patient record.\n\n**Required:** Authentication, Tenant context\n\n**Note:** `patient_hn` is auto-generated by the system.\n\n**Gender values:** M, F, OTHER\n**Blood group values:** A, B, O, AB"
+					},
+					"response": [
+						{
+							"name": "Created",
+							"originalRequest": {
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"\",\n    \"date_of_birth\": \"1985-03-20\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"\",\n    \"phone_number\": \"0891234567\",\n    \"email\": \"somchai@email.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/patient/create",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "patient", "create"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"body": "{\n  \"success\": true,\n  \"message\": \"patient created successfully\",\n  \"data\": {\n    \"ID\": 1,\n    \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n    \"UpdatedAt\": \"2024-01-01T00:00:00Z\",\n    \"DeletedAt\": null,\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"\",\n    \"date_of_birth\": \"1985-03-20T00:00:00Z\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"patient_hn\": \"HN00000001\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"\",\n    \"phone_number\": \"0891234567\",\n    \"email\": \"somchai@email.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Update Patient (Full)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"Middle\",\n    \"date_of_birth\": \"1985-03-20\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"AB1234567\",\n    \"phone_number\": \"0899999999\",\n    \"email\": \"somchai.updated@email.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/patient/update/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "patient", "update", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Patient ID"
+								}
+							]
+						},
+						"description": "Full update of a patient record (PUT).\n\n**Required:** Authentication, Tenant context\n\n**Note:** All required fields must be provided."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "PUT",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"Middle\",\n    \"date_of_birth\": \"1985-03-20\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"AB1234567\",\n    \"phone_number\": \"0899999999\",\n    \"email\": \"somchai.updated@email.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/patient/update/1",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "patient", "update", "1"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"patient updated successfully\",\n  \"data\": {\n    \"ID\": 1,\n    \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n    \"UpdatedAt\": \"2024-01-02T00:00:00Z\",\n    \"DeletedAt\": null,\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"Middle\",\n    \"date_of_birth\": \"1985-03-20T00:00:00Z\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"patient_hn\": \"HN00000001\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"AB1234567\",\n    \"phone_number\": \"0899999999\",\n    \"email\": \"somchai.updated@email.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Update Patient (Partial)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone_number\": \"0888888888\",\n    \"email\": \"new.email@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/patient/update/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "patient", "update", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Patient ID"
+								}
+							]
+						},
+						"description": "Partial update of a patient record (PATCH).\n\n**Required:** Authentication, Tenant context\n\n**Note:** Only include fields you want to update. Omitted fields will remain unchanged."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "PATCH",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"0888888888\",\n    \"email\": \"new.email@example.com\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/patient/update/1",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "patient", "update", "1"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"patient updated successfully\",\n  \"data\": {\n    \"ID\": 1,\n    \"CreatedAt\": \"2024-01-01T00:00:00Z\",\n    \"UpdatedAt\": \"2024-01-02T00:00:00Z\",\n    \"DeletedAt\": null,\n    \"first_name_th\": \"สมชาย\",\n    \"last_name_th\": \"ใจดี\",\n    \"middle_name_th\": \"\",\n    \"first_name_en\": \"Somchai\",\n    \"last_name_en\": \"Jaidee\",\n    \"middle_name_en\": \"\",\n    \"date_of_birth\": \"1985-03-20T00:00:00Z\",\n    \"nick_name_th\": \"ชาย\",\n    \"nick_name_en\": \"Chai\",\n    \"patient_hn\": \"HN00000001\",\n    \"national_id\": \"1234567890123\",\n    \"passport_id\": \"\",\n    \"phone_number\": \"0888888888\",\n    \"email\": \"new.email@example.com\",\n    \"gender\": \"M\",\n    \"nationality\": \"Thai\",\n    \"blood_grp\": \"A\"\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Delete Patient",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/patient/delete/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "patient", "delete", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Patient ID"
+								}
+							]
+						},
+						"description": "Delete a patient record (soft delete).\n\n**Required:** Authentication, Tenant context"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "DELETE",
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/patient/delete/1",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "patient", "delete", "1"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"message\": \"patient deleted successfully\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Patient management endpoints. All endpoints require authentication and tenant context."
+		}
+	]
+}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/wichai2002/his_v1/internal/delivery/http/middleware"
 	"github.com/wichai2002/his_v1/internal/domain"
 	"github.com/wichai2002/his_v1/pkg/utils"
 
@@ -36,7 +37,10 @@ func (h *StaffHandler) Login(c *gin.Context) {
 		return
 	}
 
-	response, err := h.staffService.Login(&req)
+	// Get tenant schema from context
+	schemaName := middleware.GetTenantSchema(c)
+
+	response, err := h.staffService.Login(&req, schemaName)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
@@ -66,7 +70,9 @@ func (h *StaffHandler) Logout(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /staff [get]
 func (h *StaffHandler) GetAll(c *gin.Context) {
-	staffs, err := h.staffService.GetAll()
+	schemaName := middleware.GetTenantSchema(c)
+
+	staffs, err := h.staffService.GetAll(schemaName)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -91,7 +97,9 @@ func (h *StaffHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	staff, err := h.staffService.GetByID(uint(id))
+	schemaName := middleware.GetTenantSchema(c)
+
+	staff, err := h.staffService.GetByID(uint(id), schemaName)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "staff not found")
 		return
@@ -117,7 +125,9 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		return
 	}
 
-	staff, err := h.staffService.Create(&req)
+	schemaName := middleware.GetTenantSchema(c)
+
+	staff, err := h.staffService.Create(&req, schemaName)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -150,7 +160,9 @@ func (h *StaffHandler) Update(c *gin.Context) {
 		return
 	}
 
-	staff, err := h.staffService.Update(uint(id), &req)
+	schemaName := middleware.GetTenantSchema(c)
+
+	staff, err := h.staffService.Update(uint(id), &req, schemaName)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -174,7 +186,9 @@ func (h *StaffHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.staffService.Delete(uint(id)); err != nil {
+	schemaName := middleware.GetTenantSchema(c)
+
+	if err := h.staffService.Delete(uint(id), schemaName); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}

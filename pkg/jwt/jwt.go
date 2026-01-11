@@ -8,7 +8,7 @@ import (
 )
 
 type JWTService interface {
-	GenerateToken(userID uint, username string, isAdmin bool, hospitalID uint) (string, error)
+	GenerateToken(userID uint, username string, isAdmin bool, schemaName string) (string, error)
 	ValidateToken(token string) (*Claims, error)
 }
 
@@ -16,7 +16,8 @@ type Claims struct {
 	UserID     uint   `json:"user_id"`
 	Username   string `json:"username"`
 	IsAdmin    bool   `json:"is_admin"`
-	HospitalID uint   `json:"hospital_id"`
+	TenantID   uint   `json:"tenant_id"`
+	SchemaName string `json:"schema_name"` // Tenant schema for multi-tenancy
 	jwt.RegisteredClaims
 }
 
@@ -32,12 +33,12 @@ func NewJWTService(secretKey string, expiresIn time.Duration) JWTService {
 	}
 }
 
-func (s *jwtService) GenerateToken(userID uint, username string, isAdmin bool, hospitalID uint) (string, error) {
+func (s *jwtService) GenerateToken(userID uint, username string, isAdmin bool, schemaName string) (string, error) {
 	claims := &Claims{
 		UserID:     userID,
 		Username:   username,
 		IsAdmin:    isAdmin,
-		HospitalID: hospitalID,
+		SchemaName: schemaName,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.expiresIn)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

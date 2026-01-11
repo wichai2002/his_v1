@@ -25,40 +25,44 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Run migrations
+	// Run migrations (for public schema)
 	if err := database.RunMigrations(db); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
+
+	// Initialize tenant database manager
+	dbManager := database.NewTenantDBManager(db)
 
 	// Initialize JWT service
 	jwtService := jwt.NewJWTService(cfg.JWT.SecretKey, cfg.JWT.ExpiresIn)
 
 	// Initialize repositories
-	hospitalRepo := repository.NewHospitalRepository(db)
-	staffRepo := repository.NewStaffRepository(db)
-	patientRepo := repository.NewPatientRepository(db)
+	tenantRepo := repository.NewTenantRepository(db)
+	staffRepo := repository.NewStaffRepository(db, dbManager)
+	patientRepo := repository.NewPatientRepository(db, dbManager)
 
 	// Initialize services
-	hospitalService := services.NewHospitalService(hospitalRepo)
-	staffService := services.NewStaffService(staffRepo, jwtService, hospitalService)
-	patientService := services.NewPatientService(patientRepo, hospitalService)
+	tenantService := services.NewTenantService(tenantRepo, dbManager, db)
+	staffService := services.NewStaffService(staffRepo, jwtService)
+	patientService := services.NewPatientService(patientRepo, tenantService)
 
 	// Initialize handlers
-	hospitalHandler := handler.NewHospitalHandler(hospitalService)
 	staffHandler := handler.NewStaffHandler(staffService)
 	patientHandler := handler.NewPatientHandler(patientService)
 
-	// Setup router
+	// Setup router with tenant support
 	router := http.NewRouter(
 		staffHandler,
-		hospitalHandler,
 		patientHandler,
 		jwtService,
+		tenantService,
+		dbManager,
 	)
 	engine := router.Setup()
 
 	// Start server
 	log.Printf("Server starting on port %s", cfg.Server.Port)
+	log.Println("Multi-tenant mode enabled - use subdomain to access tenant data")
 	if err := engine.Run(":" + cfg.Server.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

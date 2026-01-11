@@ -35,19 +35,22 @@ func RunMigrations(db *gorm.DB) error {
 }
 
 // RollbackMigration rolls back the last migration
+// Uses legacy migrator to include old tenant-specific migrations that may need rollback
 func RollbackMigration(db *gorm.DB) error {
-	migrator := NewMigrator(db)
+	migrator := NewMigratorWithLegacy(db)
 	return migrator.MigrateDown()
 }
 
 // RollbackAllMigrations rolls back all migrations
+// Uses legacy migrator to include old tenant-specific migrations that may need rollback
 func RollbackAllMigrations(db *gorm.DB) error {
-	migrator := NewMigrator(db)
+	migrator := NewMigratorWithLegacy(db)
 	return migrator.MigrateDownAll()
 }
 
 // MigrationStatus prints the current migration status
+// Uses legacy migrator to show all migrations including legacy ones
 func MigrationStatus(db *gorm.DB) {
-	migrator := NewMigrator(db)
+	migrator := NewMigratorWithLegacy(db)
 	migrator.Status()
 }

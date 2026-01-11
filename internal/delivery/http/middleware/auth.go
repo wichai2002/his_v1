@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware validates the JWT token
+// AuthMiddleware validates the JWT token and sets user context
 func AuthMiddleware(jwtService jwt.JWTService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// It checks if the Authorization header is present
@@ -37,11 +37,25 @@ func AuthMiddleware(jwtService jwt.JWTService) gin.HandlerFunc {
 			return
 		}
 
-		// sets the user_id, username, is_admin, and hospital_id in the context for later use
+		// Validate that JWT schema matches tenant schema from subdomain (if tenant context exists)
+		if tenantSchema, exists := c.Get(TenantSchemaKey); exists {
+			if ts, ok := tenantSchema.(string); ok && ts != "public" && ts != claims.SchemaName {
+				utils.ErrorResponse(c, http.StatusForbidden, "token not valid for this tenant")
+				c.Abort()
+				return
+			}
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("is_admin", claims.IsAdmin)
-		c.Set("hospital_id", claims.HospitalID)
+		c.Set("tenant_id", claims.TenantID)
+		c.Set("jwt_schema", claims.SchemaName) // Schema from JWT for tenant context
+
+		// If no tenant context from middleware, use JWT schema
+		if _, exists := c.Get(TenantSchemaKey); !exists {
+			c.Set(TenantSchemaKey, claims.SchemaName)
+		}
 
 		c.Next()
 	}
@@ -60,4 +74,24 @@ func AdminMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// GetUserID retrieves the current user ID from context
+func GetUserID(c *gin.Context) uint {
+	if id, exists := c.Get("user_id"); exists {
+		if userID, ok := id.(uint); ok {
+			return userID
+		}
+	}
+	return 0
+}
+
+// IsAdmin checks if the current user is an admin
+func IsAdmin(c *gin.Context) bool {
+	if isAdmin, exists := c.Get("is_admin"); exists {
+		if admin, ok := isAdmin.(bool); ok {
+			return admin
+		}
+	}
+	return false
 }

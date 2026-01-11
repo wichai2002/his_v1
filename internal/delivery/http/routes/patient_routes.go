@@ -8,11 +8,13 @@ import (
 )
 
 // RegisterPatientRoutes registers all patient-related routes
+// All patient routes require authentication and tenant context
 func RegisterPatientRoutes(router *gin.RouterGroup, patientHandler *handler.PatientHandler, jwtService jwt.JWTService) {
 	patientGroup := router.Group("/patient")
 	patientGroup.Use(middleware.AuthMiddleware(jwtService))
+	patientGroup.Use(middleware.TenantRequiredMiddleware())
 	{
-		patientGroup.GET("/search/:id", patientHandler.Search)
+		patientGroup.GET("/search", patientHandler.Search)
 		patientGroup.POST("/create", patientHandler.Create)
 		patientGroup.PUT("/update/:id", patientHandler.Update)
 		patientGroup.PATCH("/update/:id", patientHandler.PartialUpdate)

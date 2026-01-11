@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
+	"github.com/wichai2002/his_v1/internal/delivery/http/middleware"
 	"github.com/wichai2002/his_v1/internal/domain"
 	"github.com/wichai2002/his_v1/pkg/utils"
 
@@ -20,16 +22,52 @@ func NewPatientHandler(patientService domain.PatientService) *PatientHandler {
 	}
 }
 
-func (h *PatientHandler) Search(c *gin.Context) {
-	hospitalID, _ := c.Get("hospital_id")
+// handleServiceError maps domain errors to appropriate HTTP status codes
+func (h *PatientHandler) handleServiceError(c *gin.Context, err error, resourceName string) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		utils.ErrorResponse(c, http.StatusNotFound, resourceName+" not found")
+	case errors.Is(err, domain.ErrDuplicateEntry):
+		utils.ErrorResponse(c, http.StatusConflict, "duplicate "+resourceName+" entry")
+	case errors.Is(err, domain.ErrInvalidInput):
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	case errors.Is(err, domain.ErrInvalidDateFormat):
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid date format")
+	case errors.Is(err, domain.ErrFutureDateOfBirth):
+		utils.ErrorResponse(c, http.StatusBadRequest, "date of birth cannot be in the future")
+	case errors.Is(err, domain.ErrDateOfBirthTooOld):
+		utils.ErrorResponse(c, http.StatusBadRequest, "date of birth is too old")
+	case errors.Is(err, domain.ErrTenantRequired):
+		utils.ErrorResponse(c, http.StatusBadRequest, "tenant context required")
+	case errors.Is(err, domain.ErrInvalidSchemaName):
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid tenant schema")
+	default:
+		// Log the actual error for debugging (in production, use proper logging)
+		// log.Printf("Internal error: %v", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "internal server error")
+	}
+}
 
-	patient, err := h.patientService.Search(c.Query("query"), hospitalID.(uint))
+func (h *PatientHandler) Search(c *gin.Context) {
+	schemaName := middleware.GetTenantSchema(c)
+
+	patients, err := h.patientService.Search(c.Query("query"), schemaName)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "patient not found")
+		if errors.Is(err, domain.ErrNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "patient not found")
+			return
+		}
+		h.handleServiceError(c, err, "patient")
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "success", patient)
+	// Return empty array instead of error when no results found
+	if len(patients) == 0 {
+		utils.SuccessResponse(c, http.StatusOK, "success", []domain.Patient{})
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "success", patients)
 }
 
 func (h *PatientHandler) Create(c *gin.Context) {
@@ -39,11 +77,11 @@ func (h *PatientHandler) Create(c *gin.Context) {
 		return
 	}
 
-	hospitalID, _ := c.Get("hospital_id")
+	schemaName := middleware.GetTenantSchema(c)
 
-	patient, err := h.patientService.Create(&req, hospitalID.(uint))
+	patient, err := h.patientService.Create(&req, schemaName)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.handleServiceError(c, err, "patient")
 		return
 	}
 
@@ -64,9 +102,11 @@ func (h *PatientHandler) Update(c *gin.Context) {
 		return
 	}
 
-	patient, err := h.patientService.Update(uint(id), &req)
+	schemaName := middleware.GetTenantSchema(c)
+
+	patient, err := h.patientService.Update(uint(id), &req, schemaName)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.handleServiceError(c, err, "patient")
 		return
 	}
 
@@ -87,9 +127,11 @@ func (h *PatientHandler) PartialUpdate(c *gin.Context) {
 		return
 	}
 
-	patient, err := h.patientService.PartialUpdate(uint(id), &req)
+	schemaName := middleware.GetTenantSchema(c)
+
+	patient, err := h.patientService.PartialUpdate(uint(id), &req, schemaName)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.handleServiceError(c, err, "patient")
 		return
 	}
 
@@ -103,8 +145,10 @@ func (h *PatientHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.patientService.Delete(uint(id)); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	schemaName := middleware.GetTenantSchema(c)
+
+	if err := h.patientService.Delete(uint(id), schemaName); err != nil {
+		h.handleServiceError(c, err, "patient")
 		return
 	}
 

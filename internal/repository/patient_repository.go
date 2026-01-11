@@ -1,40 +1,66 @@
 package repository
 
 import (
-	"github.com/wichai2002/his_v1/internal/domain"
+	"fmt"
 
+	"github.com/wichai2002/his_v1/internal/domain"
+	"github.com/wichai2002/his_v1/internal/infrastructure/database"
 	"gorm.io/gorm"
 )
 
 type patientRepository struct {
-	db *gorm.DB
+	*TenantAwareRepository
 }
 
-func NewPatientRepository(db *gorm.DB) domain.PatientRepository {
-	return &patientRepository{db: db}
+// NewPatientRepository creates a new patient repository
+func NewPatientRepository(db *gorm.DB, dbManager *database.TenantDBManager) domain.PatientRepository {
+	return &patientRepository{
+		TenantAwareRepository: NewTenantAwareRepository(db, dbManager),
+	}
 }
 
-func (r *patientRepository) GetAll() ([]domain.Patient, error) {
+// getDB returns the appropriate database based on schema
+func (r *patientRepository) getDB(schemaName string) (*gorm.DB, error) {
+	if schemaName == "" || schemaName == "public" {
+		return r.GetDB(), nil
+	}
+	return r.GetTenantDB(schemaName)
+}
+
+func (r *patientRepository) GetAll(schemaName string) ([]domain.Patient, error) {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant db: %w", err)
+	}
+
 	var patients []domain.Patient
-	if err := r.db.Preload("Hospital").Find(&patients).Error; err != nil {
+	if err := db.Find(&patients).Error; err != nil {
 		return nil, err
 	}
 	return patients, nil
 }
 
-func (r *patientRepository) GetByID(id uint) (*domain.Patient, error) {
+func (r *patientRepository) GetByID(id uint, schemaName string) (*domain.Patient, error) {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant db: %w", err)
+	}
+
 	var patient domain.Patient
-	if err := r.db.Preload("Hospital").First(&patient, id).Error; err != nil {
+	if err := db.First(&patient, id).Error; err != nil {
 		return nil, err
 	}
 	return &patient, nil
 }
 
-// Search patient by ID, national ID, passport ID
-func (r *patientRepository) SearchByID(id uint, hospitalID uint) (*domain.Patient, error) {
-	var patient domain.Patient
-	db := r.db.Preload("Hospital").Where("hospital_id = ?", hospitalID)
+// SearchByID searches patient by ID, national ID, or passport ID
+func (r *patientRepository) SearchByID(id uint, schemaName string) (*domain.Patient, error) {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant db: %w", err)
+	}
 
+	var patient domain.Patient
 	if err := db.Where("id = ?", id).
 		Or("national_id = ?", id).
 		Or("passport_id = ?", id).
@@ -44,43 +70,90 @@ func (r *patientRepository) SearchByID(id uint, hospitalID uint) (*domain.Patien
 	return &patient, nil
 }
 
-// Search patient by query, first name, last name, middle name, patient HN, national ID, passport ID, phone number
-func (r *patientRepository) Search(query string, hospitalID uint) ([]domain.Patient, error) {
+// Search patient by query: first name, last name, middle name, patient HN, national ID, passport ID, phone number
+func (r *patientRepository) Search(query string, schemaName string) ([]domain.Patient, error) {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant db: %w", err)
+	}
+
 	var patients []domain.Patient
-	searchQuery := "%" + query + "%"
 
-	db := r.db.Preload("Hospital").Where("hospital_id = ?", hospitalID)
-
-	if query != "" {
-		if err := db.Where(
-			r.db.Where("first_name_th ILIKE ?", searchQuery).
-				Or("last_name_th ILIKE ?", searchQuery).
-				Or("first_name_en ILIKE ?", searchQuery).
-				Or("last_name_en ILIKE ?", searchQuery).
-				Or("patient_hn ILIKE ?", searchQuery).
-				Or("national_id ILIKE ?", searchQuery).
-				Or("passport_id ILIKE ?", searchQuery).
-				Or("phone_number ILIKE ?", searchQuery),
-		).Find(&patients).Error; err != nil {
+	if query == "" {
+		// Return all patients if no query
+		if err := db.Find(&patients).Error; err != nil {
 			return nil, err
 		}
+		return patients, nil
+	}
+
+	searchQuery := "%" + query + "%"
+	if err := db.Where("first_name_th ILIKE ?", searchQuery).
+		Or("last_name_th ILIKE ?", searchQuery).
+		Or("first_name_en ILIKE ?", searchQuery).
+		Or("last_name_en ILIKE ?", searchQuery).
+		Or("patient_hn ILIKE ?", searchQuery).
+		Or("national_id ILIKE ?", searchQuery).
+		Or("passport_id ILIKE ?", searchQuery).
+		Or("phone_number ILIKE ?", searchQuery).
+		Find(&patients).Error; err != nil {
+		return nil, err
 	}
 
 	return patients, nil
 }
 
-func (r *patientRepository) Create(patient *domain.Patient) error {
-	return r.db.Create(patient).Error
+func (r *patientRepository) Create(patient *domain.Patient, schemaName string) error {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant db: %w", err)
+	}
+	return db.Create(patient).Error
 }
 
-func (r *patientRepository) Update(patient *domain.Patient) error {
-	return r.db.Save(patient).Error
+func (r *patientRepository) Update(patient *domain.Patient, schemaName string) error {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant db: %w", err)
+	}
+	return db.Save(patient).Error
 }
 
-func (r *patientRepository) PartialUpdate(id uint, updates map[string]interface{}) error {
-	return r.db.Model(&domain.Patient{}).Where("id = ?", id).Updates(updates).Error
+func (r *patientRepository) PartialUpdate(id uint, updates map[string]interface{}, schemaName string) error {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant db: %w", err)
+	}
+
+	// Check if record exists and update in one operation
+	result := db.Model(&domain.Patient{}).Where("id = ?", id).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Check if any rows were affected (record exists)
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
-func (r *patientRepository) Delete(id uint) error {
-	return r.db.Delete(&domain.Patient{}, id).Error
+func (r *patientRepository) Delete(id uint, schemaName string) error {
+	db, err := r.getDB(schemaName)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant db: %w", err)
+	}
+
+	result := db.Delete(&domain.Patient{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Check if any rows were affected (record exists)
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }

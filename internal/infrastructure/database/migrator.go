@@ -38,6 +38,14 @@ func NewMigrator(db *gorm.DB) *Migrator {
 	}
 }
 
+// NewMigratorWithLegacy creates a migrator that includes legacy migrations for rollback
+func NewMigratorWithLegacy(db *gorm.DB) *Migrator {
+	return &Migrator{
+		db:         db,
+		migrations: migrations.GetAllMigrationsIncludingLegacy(),
+	}
+}
+
 // Initialize creates the migrations table if it doesn't exist
 func (m *Migrator) Initialize() error {
 	return m.db.AutoMigrate(&MigrationRecord{})
