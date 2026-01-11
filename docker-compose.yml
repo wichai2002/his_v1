@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: his_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    networks:
+      - his_network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: his_api
+    environment:
+      - SERVER_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=his_db
+      - DB_SSLMODE=disable
+      - JWT_SECRET_KEY=your-super-secret-key-change-in-production
+      - JWT_EXPIRES_IN_HOURS=24
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - his_network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: his_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=his_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - his_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d his_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  his_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
